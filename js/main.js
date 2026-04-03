@@ -1,87 +1,128 @@
 /* ============================================
    CARPARK CLEANING PROS - Main JavaScript
+   Redesigned: clean, modern vanilla JS
    ============================================ */
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
 
-  // --- Mobile Navigation Toggle ---
+  /* ------------------------------------------
+     1. Mobile Navigation
+     ------------------------------------------ */
   const mobileToggle = document.querySelector('.mobile-toggle');
   const navMenu = document.querySelector('.nav-menu');
 
+  const closeNav = () => {
+    mobileToggle?.classList.remove('active');
+    navMenu?.classList.remove('active');
+    document.body.style.overflow = '';
+  };
+
   if (mobileToggle && navMenu) {
-    mobileToggle.addEventListener('click', function () {
-      this.classList.toggle('active');
-      navMenu.classList.toggle('active');
-      document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
+    mobileToggle.addEventListener('click', () => {
+      const isOpen = navMenu.classList.toggle('active');
+      mobileToggle.classList.toggle('active', isOpen);
+      document.body.style.overflow = isOpen ? 'hidden' : '';
     });
 
-    // Close menu when clicking a nav link
-    navMenu.querySelectorAll('a').forEach(function (link) {
-      link.addEventListener('click', function () {
-        mobileToggle.classList.remove('active');
-        navMenu.classList.remove('active');
-        document.body.style.overflow = '';
-      });
+    // Close on nav link click
+    navMenu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', closeNav);
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navMenu.classList.contains('active')) {
+        closeNav();
+      }
     });
   }
 
-  // --- Header scroll effect ---
+
+  /* ------------------------------------------
+     2. Header Scroll Effect
+     ------------------------------------------ */
   const header = document.querySelector('.site-header');
+
   if (header) {
-    window.addEventListener('scroll', function () {
+    const onHeaderScroll = () => {
       header.classList.toggle('scrolled', window.scrollY > 50);
-    });
+    };
+    window.addEventListener('scroll', onHeaderScroll, { passive: true });
+    // Run once on load in case page is already scrolled
+    onHeaderScroll();
   }
 
-  // --- FAQ Accordion ---
-  document.querySelectorAll('.faq-question').forEach(function (button) {
-    button.addEventListener('click', function () {
-      var item = this.closest('.faq-item');
-      var isActive = item.classList.contains('active');
 
-      // Close all FAQ items
-      document.querySelectorAll('.faq-item').forEach(function (faqItem) {
+  /* ------------------------------------------
+     3. FAQ Accordion
+     ------------------------------------------ */
+  const faqQuestions = document.querySelectorAll('.faq-question');
+
+  faqQuestions.forEach(button => {
+    button.addEventListener('click', () => {
+      const item = button.closest('.faq-item');
+      const isActive = item.classList.contains('active');
+
+      // Close all items and reset aria
+      document.querySelectorAll('.faq-item').forEach(faqItem => {
         faqItem.classList.remove('active');
+        const trigger = faqItem.querySelector('.faq-question');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
       });
 
-      // Toggle clicked item
+      // Open clicked item if it was not already open
       if (!isActive) {
         item.classList.add('active');
+        button.setAttribute('aria-expanded', 'true');
       }
     });
   });
 
-  // --- Contact Form Handling ---
-  var contactForm = document.getElementById('contactForm');
+
+  /* ------------------------------------------
+     4. Contact Form (FormSubmit.co)
+     ------------------------------------------ */
+  const contactForm = document.getElementById('contactForm');
+
   if (contactForm) {
-    contactForm.addEventListener('submit', function (e) {
+    contactForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      var formData = new FormData(this);
-      var submitBtn = this.querySelector('.form-submit');
-      var originalText = submitBtn.textContent;
+      const formData = new FormData(contactForm);
+      const submitBtn = contactForm.querySelector('.form-submit');
+      const originalText = submitBtn.textContent;
 
-      // Disable button and show loading
+      // Disable button, show loading state
       submitBtn.disabled = true;
       submitBtn.textContent = 'Sending...';
 
-      // Build mailto link as fallback / direct email approach
-      var name = formData.get('name');
-      var email = formData.get('email');
-      var phone = formData.get('phone');
-      var service = formData.get('service');
-      var message = formData.get('message');
+      // Collect field values
+      const name = formData.get('name') || '';
+      const email = formData.get('email') || '';
+      const phone = formData.get('phone') || '';
+      const service = formData.get('service') || '';
+      const message = formData.get('message') || '';
 
-      var subject = encodeURIComponent('Carpark Cleaning Enquiry from ' + name);
-      var body = encodeURIComponent(
-        'Name: ' + name + '\n' +
-        'Email: ' + email + '\n' +
-        'Phone: ' + phone + '\n' +
-        'Service: ' + service + '\n\n' +
-        'Message:\n' + message
+      // Mailto fallback
+      const subject = encodeURIComponent(`Carpark Cleaning Enquiry from ${name}`);
+      const body = encodeURIComponent(
+        `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nService: ${service}\n\nMessage:\n${message}`
       );
+      const mailtoLink = `mailto:office@premrest.com.au?subject=${subject}&body=${body}`;
 
-      // Try FormSubmit.co for seamless email delivery
+      const showSuccess = () => {
+        contactForm.style.display = 'none';
+        const successEl = document.querySelector('.form-success');
+        if (successEl) successEl.classList.add('show');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      };
+
+      const fallbackMailto = () => {
+        window.location.href = mailtoLink;
+        showSuccess();
+      };
+
       fetch('https://formsubmit.co/ajax/office@premrest.com.au', {
         method: 'POST',
         headers: {
@@ -89,79 +130,166 @@ document.addEventListener('DOMContentLoaded', function () {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          name: name,
-          email: email,
-          phone: phone,
-          service: service,
-          message: message,
-          _subject: 'Carpark Cleaning Enquiry from ' + name,
+          name,
+          email,
+          phone,
+          service,
+          message,
+          _subject: `Carpark Cleaning Enquiry from ${name}`,
           _template: 'table'
         })
       })
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (data) {
-        if (data.success === 'true' || data.success === true) {
-          showFormSuccess();
-        } else {
-          // Fallback to mailto
-          window.location.href = 'mailto:office@premrest.com.au?subject=' + subject + '&body=' + body;
-          showFormSuccess();
-        }
-      })
-      .catch(function () {
-        // Fallback to mailto on network error
-        window.location.href = 'mailto:office@premrest.com.au?subject=' + subject + '&body=' + body;
-        showFormSuccess();
-      });
+        .then(response => response.json())
+        .then(data => {
+          if (data.success === 'true' || data.success === true) {
+            showSuccess();
+          } else {
+            fallbackMailto();
+          }
+        })
+        .catch(() => {
+          fallbackMailto();
+        });
+    });
+  }
 
-      function showFormSuccess() {
-        contactForm.style.display = 'none';
-        var successMsg = document.querySelector('.form-success');
-        if (successMsg) {
-          successMsg.classList.add('show');
+
+  /* ------------------------------------------
+     5. Scroll Reveal Animations
+     ------------------------------------------ */
+  const revealElements = document.querySelectorAll('.reveal');
+
+  if (revealElements.length > 0 && 'IntersectionObserver' in window) {
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const delay = el.dataset.delay;
+
+          if (delay) {
+            setTimeout(() => {
+              el.classList.add('revealed');
+            }, parseInt(delay, 10));
+          } else {
+            el.classList.add('revealed');
+          }
+
+          observer.unobserve(el);
         }
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -60px 0px'
+    });
+
+    revealElements.forEach(el => revealObserver.observe(el));
+  }
+
+
+  /* ------------------------------------------
+     6. Smooth Scroll
+     ------------------------------------------ */
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', (e) => {
+      const href = anchor.getAttribute('href');
+      if (href === '#') return;
+
+      const target = document.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        const headerHeight = header ? header.offsetHeight : 0;
+        const top = target.getBoundingClientRect().top + window.scrollY - headerHeight;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  });
+
+
+  /* ------------------------------------------
+     7. Parallax-lite (blob decorations)
+     ------------------------------------------ */
+  const isDesktop = window.matchMedia('(min-width: 768px)');
+  const blobs = document.querySelectorAll('.blob-decoration');
+
+  if (blobs.length > 0 && isDesktop.matches) {
+    let ticking = false;
+
+    const updateParallax = () => {
+      const scrollY = window.scrollY;
+      blobs.forEach((blob, index) => {
+        // Alternate rates for depth: even blobs move slower, odd blobs faster
+        const rate = index % 2 === 0 ? 0.03 : 0.06;
+        const yOffset = -(scrollY * rate);
+        blob.style.transform = `translateY(${yOffset}px)`;
+      });
+      ticking = false;
+    };
+
+    const onParallaxScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onParallaxScroll, { passive: true });
+
+    // Disable if viewport resizes below desktop
+    isDesktop.addEventListener('change', (e) => {
+      if (!e.matches) {
+        window.removeEventListener('scroll', onParallaxScroll);
+        blobs.forEach(blob => { blob.style.transform = ''; });
+      } else {
+        window.addEventListener('scroll', onParallaxScroll, { passive: true });
       }
     });
   }
 
-  // --- Scroll Animations (Intersection Observer) ---
-  var fadeElements = document.querySelectorAll('.fade-in');
-  if (fadeElements.length > 0 && 'IntersectionObserver' in window) {
-    var observer = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
+
+  /* ------------------------------------------
+     8. Counter Animation
+     ------------------------------------------ */
+  const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+
+  if (statNumbers.length > 0 && 'IntersectionObserver' in window) {
+    const animateCounter = (el) => {
+      const target = parseInt(el.dataset.target, 10);
+      if (isNaN(target)) return;
+
+      const duration = 2000; // ms
+      const startTime = performance.now();
+
+      const step = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Ease-out cubic for a natural deceleration
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(eased * target);
+
+        el.textContent = current.toLocaleString();
+
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        }
+      };
+
+      requestAnimationFrame(step);
+    };
+
+    const counterObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
+          animateCounter(entry.target);
           observer.unobserve(entry.target);
         }
       });
     }, {
       threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
+      rootMargin: '0px 0px -60px 0px'
     });
 
-    fadeElements.forEach(function (el) {
-      observer.observe(el);
-    });
+    statNumbers.forEach(el => counterObserver.observe(el));
   }
-
-  // --- Smooth Scroll for anchor links ---
-  document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
-    anchor.addEventListener('click', function (e) {
-      var target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        e.preventDefault();
-        var headerHeight = document.querySelector('.site-header').offsetHeight;
-        var targetPosition = target.getBoundingClientRect().top + window.scrollY - headerHeight;
-        window.scrollTo({
-          top: targetPosition,
-          behavior: 'smooth'
-        });
-      }
-    });
-  });
 
 });
